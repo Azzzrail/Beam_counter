@@ -7,6 +7,7 @@
 ##create_clock -add -name clk  -period 10.00 -waveform {0 5} [get_ports { clk }];
 ##set_property -dict { PACKAGE_PIN E3    IOSTANDARD LVCMOS33 } [get_ports { clk }]; #IO_L12P_T1_MRCC_35 Sch=clk[100]
 
+
 create_clock -add -period 10.000 -waveform {0 5} -name clk [get_ports {clk}];
 set_property PACKAGE_PIN E3 [get_ports {clk}];
 set_property IOSTANDARD LVCMOS33 [get_ports {clk}];

@@ -49,27 +49,26 @@ signal signal_width                      :  std_logic_vector(8 downto 0);
 signal One_Hz_clk,PLL_CLK_t              :  STD_LOGIC;
 signal one_second_precounter             :  std_logic_vector(22 downto 0);
 signal seconds_counter                   :  std_logic_vector(3 downto 0);
-signal pre_counter1                      :  std_logic_vector(22 downto 0);
-signal pre_counter2                      :  std_logic_vector(26 downto 0);
+signal pre_counter                       :  std_logic_vector(22 downto 0);
 signal one_second_counter, PLL_CLK_in    :  STD_LOGIC;
 type state_values is (reset_FSM, counter, flag, out_signal);
 signal pres_state, next_state : state_values;
 
 
-component clkip
+component clk_wiz_0
  port
   (-- Clock in ports
    -- Clock out ports
-   PLL_CLK          : out    std_logic;
+   clk_out1         : out    std_logic;
    clk_in1          : in     std_logic
   );
  end component;
 
 begin
-IP_clock : clkip
+IP_clock : clk_wiz_0
   port map (
  -- Clock out ports
-  PLL_CLK => PLL_CLK_t,
+  clk_out1 => PLL_CLK_t,
   -- Clock in ports
   clk_in1 => clk
 );
@@ -138,35 +137,18 @@ end process Sec_counter;
 CLK_1Hz: process(PLL_CLK_t, clk, enable, reset)
 begin
   if reset = '1'then -- or pre_counter1 > x"4C4B40" then
-     pre_counter1 <= (others=>'0');
+     pre_counter <= (others=>'0');
    elsif (PLL_CLK_t='1' and PLL_CLK_t'event) then
      if enable = '1' then
-       pre_counter1 <= pre_counter1 + "1";
-       if pre_counter1 = x"4C4B40" then
+       pre_counter <= pre_counter + "1";
+       if pre_counter = x"4C4B40" then
         output1 <= not output1;
-        pre_counter1 <= (others=>'0');
+        pre_counter <= (others=>'0');
         seconds_counter <= seconds_counter + "1" ;
       end if;
     end if;
    end if;
-
  end process;
-
- CLK_1H : process(PLL_CLK_t, clk, enable, reset)
- begin
-   if reset = '1' then --or pre_counter2 > x"5F5E100"then
-      pre_counter2 <= (others=>'0');
-    elsif (clk='1' and clk'event) then
-      if enable = '1' then
-        pre_counter2 <= pre_counter2 + "1";
-        if pre_counter2 = x"5F5E100" then
-         output2 <= not output2;
-         pre_counter2 <= (others=>'0');
-       end if;
-     end if;
-    end if;
-
-  end process;
 
 statereg: process (clk, enable)
   begin
