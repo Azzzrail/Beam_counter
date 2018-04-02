@@ -149,7 +149,6 @@ begin
       end if;
     end if;
    end if;
-
  end process;
 
  CLK_1H : process(PLL_CLK_t, clk, enable, reset)
