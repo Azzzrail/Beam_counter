@@ -43,19 +43,21 @@ end proj_4;
 
 architecture Behavioral of proj_4 is
 signal pre_count                         :  std_logic_vector(7 downto 0);
-signal out_signal_width_count            :  std_logic_vector(4 downto 0);
-signal prev_time_clear_flag              :  STD_LOGIC;
+signal out_signal_width_count            :  std_logic_vector(2 downto 0);
+signal presignal_time_clear_flag         :  STD_LOGIC;
+signal postsignal_time_clear_flag        :  STD_LOGIC;
 signal signal_width                      :  std_logic_vector(8 downto 0);
-signal One_Hz_clk,PLL_CLK_t              :  STD_LOGIC;
+signal out_flag,PLL_CLK_t              :  STD_LOGIC;
 signal one_second_precounter             :  std_logic_vector(22 downto 0);
-signal seconds_counter                   :  std_logic_vector(3 downto 0);
+signal seconds_counter_pre,seconds_counter_post, seconds_counter :  std_logic_vector(7 downto 0);
 signal pre_counter                       :  std_logic_vector(22 downto 0);
-signal one_second_counter, PLL_CLK_in    :  STD_LOGIC;
-type state_values is (reset_FSM, counter, flag, out_signal);
+signal PLL_CLK_in, pre_count_flag                        :  STD_LOGIC;
+signal one_second_counter                :  STD_LOGIC := '0';
+type state_values is (reset_FSM, counter, flag, out_signal_on, out_signal_off);
 signal pres_state, next_state : state_values;
 
 
-component clk_wiz_0
+component clkip
  port
   (-- Clock in ports
    -- Clock out ports
@@ -65,7 +67,7 @@ component clk_wiz_0
  end component;
 
 begin
-IP_clock : clk_wiz_0
+IP_clock : clkip
   port map (
  -- Clock out ports
   clk_out1 => PLL_CLK_t,
@@ -75,64 +77,68 @@ IP_clock : clk_wiz_0
 
 
 
-Noise_reduction: process( pres_state, next_state, clk, input  )
+Noise_reduction: process( pres_state, next_state, clk, input, output1  )
     begin
 
 
+--
+-- case pres_state is
+--   when reset_FSM =>
+--     pre_count  <= (others=>'0');
+--     next_state <= counter;
+--
+--
+--   when counter =>
+--     if  rising_edge(output1) and seconds_counter < x"A"  then
+--   		 pre_count <= pre_count + "1";
+--   	end if;
+--
+--     if input = '1' then
+--     next_state <= reset_FSM;
+--     end if;
+--
+--     if one_second_counter = '0' then
+--       if pre_count = x"A" and prev_time_clear_flag = '0' then
+--       next_state <= flag;
+--         elsif  pre_count = x"A" and prev_time_clear_flag = '1' then
+--           next_state <= out_signal_on;
+--     else  next_state <= out_signal_off;
+--       end if;
+--     end if;
+--
+--
+--   when flag =>
+--     prev_time_clear_flag  <= '1';
+--     next_state <= reset_FSM;
+--
+--   when out_signal_on =>
+--   if rising_edge(output1) then
+--   output2 <= '1';
+--   one_second_counter <= '1';
+--   end if;
+--   next_state <= counter;
+--
+--   when out_signal_off =>
+--   if rising_edge(output1) then
+--     output2 <= '0';
+--     one_second_counter <= '0';
+--     next_state <= reset_FSM;
+--   end if;
+--
+--
+-- --     if out_signal_width_count != x"3" then
+-- --       output2 <= '0';
+-- --       next_state <= reset_FSM;
+-- --     elsif out_signal_width_count = x"3" then
+-- -- --      out_signal_width_count <= out_signal_width_count + "1";
+-- --       output2 <= '1';
+-- --       next_state <= reset_FSM;
+-- --     end if;
+-- --     next_state <= reset_FSM;
+--
+--   end case;
+end process Noise_reduction;
 
-      case pres_state is
-        when reset_FSM =>
-        pre_count  <= (others=>'0');
-        next_state <= counter;
-
-
-        when counter =>
-
-        if  rising_edge(clk) and pre_count < x"65"  then
-      		 pre_count <= pre_count + "1";
-      	end if;
-
-        if input = '1' then
-        next_state <= reset_FSM;
-        end if;
-
-        if pre_count = x"64" and prev_time_clear_flag = '0' then
-          next_state <= flag;
-            elsif  pre_count = x"64" and prev_time_clear_flag = '1' then
-              next_state <= out_signal;
-        end if;
-
-
-        when flag =>
-        prev_time_clear_flag  <= '1';
-        next_state <= reset_FSM;
-
-        when out_signal =>
-        if out_signal_width_count >= x"1F" then
---          output <= '0';
-          next_state <= reset_FSM;
-        elsif out_signal_width_count < x"1F" and rising_edge(clk) then
-          out_signal_width_count <= out_signal_width_count + "1";
-          --output <= '1';
-        end if;
-
-      next_state <= reset_FSM;
-      end case;
-   end process Noise_reduction;
-
-Sec_counter: process (clk, enable)
- begin
-  if (enable = '1' and rising_edge(PLL_CLK_t)) then
-     one_second_precounter <= one_second_precounter + '1';
-  --   output <= one_second_precounter(22);
-  end if;
-
-  -- if one_second_precounter >= x"4C4B41" then
-  -- --  one_second_counter <= one_second_precounter(22);
-  --   one_second_precounter <= (others=>'0');
-  --
-  -- end if;
-end process Sec_counter;
 
 CLK_1Hz: process(PLL_CLK_t, clk, enable, reset)
 begin
@@ -149,22 +155,79 @@ begin
     end if;
    end if;
  end process;
-
-statereg: process (clk, enable)
-  begin
-    if (enable = '0') then
-      pres_state <= reset_FSM;
-        elsif (clk'event and clk ='1') then
-          pres_state <= next_state;
-     end if;
-end process statereg;
-end Behavioral;
-
-
-
--- count: process (clk, input, enable, reset, pre_count, signal_width)
---  begin
 --
+-- statereg: process (clk, enable)
+--   begin
+--     if (enable = '0') then
+--       pres_state <= reset_FSM;
+--         elsif (output1'event and output1 ='1') then
+--           pres_state <= next_state;
+--      end if;
+-- end process statereg;
+
+presignal_counter: process(output1, enable, reset, input, pre_count_flag, presignal_time_clear_flag)
+begin
+if presignal_time_clear_flag = '0' then
+  if seconds_counter_pre > x"A" then
+     pre_count_flag <= '1';
+     seconds_counter_pre <= (others=>'0');
+  elsif rising_edge(output1) and seconds_counter_pre <= x"A" and pre_count_flag = '0' then
+  		  pre_count <= pre_count + "1";
+        presignal_time_clear_flag <= '0';
+        if input = '1' then
+          seconds_counter_pre <= (others=>'0');
+          presignal_time_clear_flag <='0';
+          pre_count_flag <= '0';
+        end if;
+      end if;
+ 	end if;
+
+if pre_count_flag = '1' then
+  if rising_edge(output1) and input = '1' then
+    presignal_time_clear_flag <= '1';
+    seconds_counter_pre <= (others=>'0');
+  end if;
+end if;
+end process;
+
+postsignal_counter: process(output1, enable, reset, input)
+begin
+if presignal_time_clear_flag = '1' then
+  if seconds_counter_pre > x"A" then
+     postsignal_time_clear_flag <= '1';
+     seconds_counter_post <= (others=>'0');
+     out_flag <= '1';
+  elsif rising_edge(output1) and seconds_counter_post <= x"A"  then
+  		  pre_count <= pre_count + "1";
+        if input = '1' then
+          seconds_counter_post <= (others=>'0');
+          presignal_time_clear_flag <='0';
+          postsignal_time_clear_flag <='0';
+          pre_count_flag <= '0';
+          out_flag <= '0';
+
+      	end if;
+ 	end if;
+end if;
+
+  if rising_edge(output1) and input = '1' then
+    postsignal_time_clear_flag <= '0';
+    seconds_counter_post <= (others=>'0');
+    pre_count_flag <= '0';
+  end if;
+end process;
+
+output_write: process (out_flag, output1)
+begin
+  if rising_edge(output1) and out_flag = '1' then
+    output2 <= '1';
+  end if;
+end process;
+-------------------------------------------------------------------------------
+count: process (clk, input, enable, reset, pre_count, signal_width, output1)
+ begin
+
+
 --
 -- 	if  rising_edge(clk) and enable = '1'  then --and pre_count<x"5F5E100"
 -- 		 pre_count <= pre_count + "1";
@@ -174,31 +237,32 @@ end Behavioral;
 -- 			flag <= '1';
 -- 	   else
 --
--- 			output <= '0';
+-- 			output2 <= '0';
 -- 	end if;
+-- --
+-- if flag = '1' and pre_count > x"64" then
+--   for і іn 1 to 30 loop
 --
---   if flag = '1' and pre_count > x"64" then
---     for і іn 1 to 30 loop
---
---       output <= '1';
---     end loop;
---   end if;
---
---   if  input = '1' then
--- 		pre_count <= (others=>'0'); -- обнуляем все разряды логического вектора count
--- 	end if;
---
---
--- 				-- elsif input = '1' then
--- 					-- pre_count <= (others=>'0');
--- 					-- output <= '0';
---
--- 					-- elsif  pre_count=x"5F5E100" then
--- 						-- output <= '1';
--- 						-- pre_count <= (others=>'0');
---
--- 			--end if;
---
---
---
---          end process count;
+--     output <= '1';
+--   end loop;
+-- end if;
+
+  -- if  input = '1' then
+	-- 	pre_count <= (others=>'0'); -- обнуляем все разряды логического вектора count
+	-- end if;
+
+
+				-- elsif input = '1' then
+					-- pre_count <= (others=>'0');
+					-- output <= '0';
+
+					-- elsif  pre_count=x"5F5E100" then
+						-- output <= '1';
+						-- pre_count <= (others=>'0');
+
+			--end if;
+
+
+
+end process count;
+end Behavioral;
