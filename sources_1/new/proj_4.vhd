@@ -38,9 +38,9 @@ entity proj_4 is
 		       enable   : in STD_LOGIC;
 		       input    : in STD_LOGIC;
            output1   : inout STD_LOGIC;
-           output2   : inout STD_LOGIC;
-           output3   : inout STD_LOGIC;
-           output4   : inout STD_LOGIC);
+           output2   : out STD_LOGIC;
+           output3   : out STD_LOGIC;
+           output4   : out STD_LOGIC);
 end proj_4;
 
 architecture Behavioral of proj_4 is
@@ -77,81 +77,48 @@ IP_clock : clkip
   clk_in1 => clk
 );
 
-output: process (pres_state, clk, input, output1, pre_count, presignal_time_clear_flag, output_allowed_flag, PLL_CLK_t  )
-begin
-
-
-  case pres_state is
-    when reset_FSM =>
-          presignal_time_clear_flag <= '0';
-          output2 <= '0';
-    when reset_counter =>
-          presignal_time_clear_flag <= '0';
-          output2 <= '0';
-          --output3  <= '0';
---          output4  <= '0';
-          pre_count  <= (others=>'0');
-          seconds_counter <= (others=>'0');
-          output_allowed_flag <= '0';
-          count_allowed_flag  <= '1';
-    when counter =>
-    --if count_allowed_flag = '1' then
-      if  rising_edge(output1) and pre_count < x"3"  then
-         pre_count <= pre_count + "1";
-      --end if;
-    end if;
-    when flag =>
-          presignal_time_clear_flag  <= '1';
-          --output3  <= '1';
-    when out_signal_on =>
-
-            output2 <= '1';
-            count_allowed_flag <= '0';
-            output_allowed_flag <= '1';
-
-    when out_signal_off =>
-            output2 <= '0';
-  end case;
-
-end process;
 
 Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count, presignal_time_clear_flag, output_allowed_flag, PLL_CLK_t  )
 
     begin
       case pres_state is
+
         when reset_FSM =>
-          if  rising_edge(output1) then
-            next_state <= reset_counter;
+
+          if  rising_edge(clk)  then
+          presignal_time_clear_flag <= '0';
+          output4  <= '0';
           end if;
+          next_state <= reset_counter;
         when reset_counter =>
-        if  rising_edge(output1) then
-          next_state <= counter;
+        if  rising_edge(clk)  then
+    --    output4  <= '0';
+        output3  <= '0';
+        pre_count  <= (others=>'0');
         end if;
-
+          next_state <= counter;
         when counter =>
-        --if rising_edge(output1)  then
 
-            if input ='1' then
+          if pre_count = x"3" and presignal_time_clear_flag = '0' then
+            next_state <= flag;
+            elsif  pre_count = x"3" and presignal_time_clear_flag = '1' then
+              next_state <= out_signal_on;
+                elsif input = '1' then
+                  next_state <= reset_counter;
+                  elsif rising_edge(clk) and pre_count < x"3" then
+                      pre_count <= pre_count + "1";
+          end if;
+
+        when flag =>
+        output3  <= '1';
+        presignal_time_clear_flag <= '1';
+          if  rising_edge(clk)  then
           next_state <= reset_counter;
           end if;
-              if pre_count = x"3" and presignal_time_clear_flag = '0' then
-                output4 <= '1';
-          next_state <= flag;
-              elsif pre_count = x"3" and presignal_time_clear_flag = '1' then
-                output3   <= '1';
-          next_state <= out_signal_on;
-                end if;
-            --    end if;
-        when flag =>
-        if  rising_edge(output1) then
-          next_state <= reset_counter;
-        end if;
         when out_signal_on =>
-        if  rising_edge(output1) then
-          next_state <= reset_counter;
-        end if;
+        output4  <= '1';
+          next_state <= reset_FSM;
         when out_signal_off =>
-          next_state <= reset_counter;
 
 
 
@@ -257,7 +224,7 @@ statereg: process (clk, enable, output1)
   begin
     if (enable = '0') then
       pres_state <= reset_FSM;
-        elsif (output1'event and output1 ='1') then
+    elsif (clk'event and clk ='1') then
           pres_state <= next_state;
      end if;
 end process statereg;
