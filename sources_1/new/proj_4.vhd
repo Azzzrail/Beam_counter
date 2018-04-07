@@ -44,15 +44,10 @@ end proj_4;
 
 architecture Behavioral of proj_4 is
 signal pre_count                                   :  std_logic_vector(7 downto 0);
-signal out_signal_width_count                      :  std_logic_vector(2 downto 0);
 signal presignal_time_clear_flag                   :  STD_LOGIC;
 signal postsignal_time_clear_flag                  :  STD_LOGIC;
-signal signal_width                                :  std_logic_vector(8 downto 0);
 signal out_flag,PLL_CLK_t                          :  STD_LOGIC;
-signal one_second_precounter                       :  std_logic_vector(22 downto 0);
-signal pre_counter                                 :  std_logic_vector(22 downto 0);
-signal PLL_CLK_in, pre_count_flag                  :  STD_LOGIC;
-signal output_allowed_flag,count_allowed_flag      :  STD_LOGIC := '0';
+signal PLL_CLK_in                                  :  STD_LOGIC;
 type state_values is (reset_FSM, reset_counter, counter, flag, out_signal_on, out_signal_off);
 signal pres_state, next_state : state_values;
 
@@ -83,12 +78,10 @@ Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count
         when reset_FSM =>
           if  rising_edge(clk)  then
             presignal_time_clear_flag <= '0';
-            output4  <= '0';
-          end if;
+            end if;
           next_state <= reset_counter;
         when reset_counter =>
           if  rising_edge(clk)  then
-            output3  <= '0';
             pre_count  <= (others=>'0');
           end if;
           next_state <= counter;
@@ -103,13 +96,11 @@ Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count
                       pre_count <= pre_count + "1";
           end if;
         when flag =>
-          output3  <= '1';
           presignal_time_clear_flag <= '1';
           if  rising_edge(clk)  then
             next_state <= reset_counter;
           end if;
         when out_signal_on =>
-          output4  <= '1';
           next_state <= reset_FSM;
         when out_signal_off =>
           next_state <= reset_FSM;
