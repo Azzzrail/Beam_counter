@@ -108,46 +108,4 @@ begin
   end if;
 end process output_on;
 
-----------------------------FSM realisation
--- Noise_reduction: process( pres_state, next_state, clk, input, pre_count, presignal_time_clear_flag, PLL_CLK_t  )
---
---     begin
---       case pres_state is
---         when reset_FSM =>
---           if  rising_edge(clk)  then
---             presignal_time_clear_flag <= '0';
---             output4  <= '0';
---           end if;
---           next_state <= reset_counter;
---         when reset_counter =>
---           if  rising_edge(clk)  then
---             output3  <= '0';
---             pre_count  <= (others=>'0');
---           end if;
---           next_state <= counter;
---         when counter =>
---           if pre_count = x"3" and presignal_time_clear_flag = '0' then
---             next_state <= flag;
---             elsif  pre_count = x"3" and presignal_time_clear_flag = '1' then
---               next_state <= out_signal_on;
---                 elsif input = '1' then
---                   next_state <= reset_counter;
---                   elsif rising_edge(clk) and pre_count < x"3" then
---                       pre_count <= pre_count + "1";
---           end if;
---         when flag =>
---           output3  <= '1';
---           presignal_time_clear_flag <= '1';
---           if  rising_edge(clk)  then
---             next_state <= reset_counter;
---           end if;
---         when out_signal_on =>
---           output4  <= '1';
---           next_state <= reset_FSM;
---         when out_signal_off =>
---           next_state <= reset_FSM;
---         end case;
---
--- end process Noise_reduction;
-
 end Behavioral;
