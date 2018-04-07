@@ -36,24 +36,17 @@ entity proj_4 is
     		   reset     : in STD_LOGIC;
 		       enable    : in STD_LOGIC;
 		       input     : in STD_LOGIC;
-           output1   : inout STD_LOGIC;
-           output2   : out STD_LOGIC;
-           output3   : out STD_LOGIC;
-           output4   : out STD_LOGIC);
+           output2   : out STD_LOGIC);
 end proj_4;
 
 architecture Behavioral of proj_4 is
 signal pre_count                                   :  std_logic_vector(7 downto 0);
-signal out_signal_width_count                      :  std_logic_vector(2 downto 0);
 signal presignal_time_clear_flag                   :  STD_LOGIC := '0';
 signal postsignal_time_clear_flag                  :  STD_LOGIC := '0';
-signal signal_width                                :  std_logic_vector(8 downto 0);
 signal out_flag,PLL_CLK_t,pre_count_clr_flag_out   :  STD_LOGIC := '0' ;
-signal pre_count_clr_flag_conditions, pretsg, posttsg              :  STD_LOGIC := '0' ;
-signal one_second_precounter                       :  std_logic_vector(22 downto 0);
-signal pre_counter                                 :  std_logic_vector(22 downto 0) := (others=>'0');
-signal PLL_CLK_in, pre_count_flag                  :  STD_LOGIC := '0' ;
-signal output_allowed_flag,count_allowed_flag      :  STD_LOGIC := '0';
+signal pre_count_clr_flag_conditions               :  STD_LOGIC := '0' ;
+signal PLL_CLK_in                                  :  STD_LOGIC := '0' ;
+
 
 
 component clkip
@@ -71,52 +64,52 @@ IP_clock : clkip
  -- Clock out ports
   clk_out1 => PLL_CLK_t,
   -- Clock in ports
-  clk_in1 => clk
+  clk_in1 => PLL_CLK_in
 );
 
+PLL_CLK_in <= clk;
 ---------------parallel process realisation
 -----------------------------------------------------------------------------
-conditions: process (clk, input, pre_count, PLL_CLK_t, presignal_time_clear_flag, postsignal_time_clear_flag)
+conditions: process (PLL_CLK_t, input, pre_count, PLL_CLK_t, pre_count_clr_flag_out)
 begin
-      if rising_edge(clk) and  pre_count_clr_flag_out  = '1' then
-        out_flag  <= '0';
-        presignal_time_clear_flag <= '0';
-        postsignal_time_clear_flag <= '0';
-      end if;
-       if pre_count = x"5" and presignal_time_clear_flag = '0' then
-         presignal_time_clear_flag <= '1';
-       elsif  pre_count = x"A" and presignal_time_clear_flag = '1' and postsignal_time_clear_flag = '0' then
-        postsignal_time_clear_flag <= '1';
+  if rising_edge(PLL_CLK_t) then
+    if pre_count_clr_flag_out  = '1' then
+      out_flag  <= '0';
+      presignal_time_clear_flag <= '0';
+      postsignal_time_clear_flag <= '0';
+      elsif pre_count = x"5" and presignal_time_clear_flag = '0' then
+        presignal_time_clear_flag <= '1';
+        elsif pre_count = x"A" and presignal_time_clear_flag = '1' and postsignal_time_clear_flag = '0' then
+          postsignal_time_clear_flag <= '1';
           out_flag  <= '1';
-end if;
+    end if;
+  end if;
 end process conditions;
 
-counter: process (clk, out_flag, input, pre_count)
+counter: process (PLL_CLK_t, out_flag, input, pre_count, pre_count_clr_flag_out)
 begin
   if ( out_flag  = '0' and input = '1' ) or  (pre_count_clr_flag_out = '1') then
     pre_count <= (others=>'0');
-  elsif rising_edge(clk) and out_flag  = '0' and input = '0' then
+    elsif rising_edge(PLL_CLK_t) and out_flag  = '0' and input = '0' then
       pre_count <= pre_count + "1";
   end if;
 end process counter;
 
-output_on: process (out_flag, clk)
+output_on: process (out_flag, PLL_CLK_t)
 begin
-  if rising_edge(clk)  then
-if out_flag  = '1' then
-
-  output2  <= '1';
-  pre_count_clr_flag_out <= '1';
-
-else
-    output2  <= '0';
-    pre_count_clr_flag_out <= '0';
-   end if;
-   end if;
+  if rising_edge(PLL_CLK_t)  then
+    if out_flag  = '1' then
+      output2  <= '1';
+      pre_count_clr_flag_out <= '1';
+      else
+        output2  <= '0';
+        pre_count_clr_flag_out <= '0';
+    end if;
+  end if;
 end process output_on;
 
 ----------------------------FSM realisation
--- Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count, presignal_time_clear_flag, PLL_CLK_t  )
+-- Noise_reduction: process( pres_state, next_state, clk, input, pre_count, presignal_time_clear_flag, PLL_CLK_t  )
 --
 --     begin
 --       case pres_state is
