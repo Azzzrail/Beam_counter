@@ -48,9 +48,10 @@ signal out_signal_width_count                      :  std_logic_vector(2 downto 
 signal presignal_time_clear_flag                   :  STD_LOGIC := '0';
 signal postsignal_time_clear_flag                  :  STD_LOGIC := '0';
 signal signal_width                                :  std_logic_vector(8 downto 0);
-signal out_flag,PLL_CLK_t                          :  STD_LOGIC := '0' ;
+signal out_flag,PLL_CLK_t,pre_count_clr_flag_out   :  STD_LOGIC := '0' ;
+signal pre_count_clr_flag_conditions, pretsg, posttsg              :  STD_LOGIC := '0' ;
 signal one_second_precounter                       :  std_logic_vector(22 downto 0);
-signal pre_counter                                 :  std_logic_vector(22 downto 0);
+signal pre_counter                                 :  std_logic_vector(22 downto 0) := (others=>'0');
 signal PLL_CLK_in, pre_count_flag                  :  STD_LOGIC := '0' ;
 signal output_allowed_flag,count_allowed_flag      :  STD_LOGIC := '0';
 
@@ -73,110 +74,46 @@ IP_clock : clkip
   clk_in1 => clk
 );
 
-
-
-
-
-
-statereg: process (clk, enable, output1)
-  begin
-    if (enable = '0') then
-      pres_state <= reset_FSM;
-    elsif (clk'event and clk ='1') then
-          pres_state <= next_state;
-     end if;
-end process statereg;
-
 ---------------parallel process realisation
-presignal_counter: process(output1, enable, reset, input, pre_count_flag, presignal_time_clear_flag)
-begin
--- if presignal_time_clear_flag = '0' then
---   if seconds_counter_pre > x"A" then
---     pre_count_flag <= '1';
---     seconds_counter_pre <= (others=>'0');
---     elsif  seconds_counter_pre <= x"A" and pre_count_flag = '0' and  input = '1' then
---       seconds_counter_pre <= (others=>'0');
---       presignal_time_clear_flag <='0';
---       pre_count_flag <= '0';
---   elsif rising_edge(output1) and seconds_counter_pre <= x"A" and pre_count_flag = '0' then
---   		  pre_count <= pre_count + "1";
---         presignal_time_clear_flag <= '0';
---
---       end if;
---  	end if;
---
--- if pre_count_flag = '1' then
---   if rising_edge(output1) and input = '1' then
---     presignal_time_clear_flag <= '1';
---     seconds_counter_pre <= (others=>'0');
---   end if;
--- end if;
--- end process;
---
--- postsignal_counter: process(output1, enable, reset, input)
--- begin
--- if presignal_time_clear_flag = '1' then
---   if seconds_counter_pre > x"A" then
---      postsignal_time_clear_flag <= '1';
---      seconds_counter_post <= (others=>'0');
---      out_flag <= '1';
---   elsif rising_edge(output1) and seconds_counter_post <= x"A"  then
---   		  pre_count <= pre_count + "1";
---         if input = '1' then
---           seconds_counter_post <= (others=>'0');
---           presignal_time_clear_flag <='0';
---           postsignal_time_clear_flag <='0';
---           pre_count_flag <= '0';
---           out_flag <= '0';
---
---       	end if;
---  	end if;
--- end if;
---
---   if rising_edge(output1) and input = '1' then
---     postsignal_time_clear_flag <= '0';
---     seconds_counter_post <= (others=>'0');
---     pre_count_flag <= '0';
---   end if;
-end process;
-
-output_write: process (out_flag, output1)
-begin
-  if rising_edge(output1) and out_flag = '1' then
-    output2 <= '1';
-  end if;
-end process;
-
 -----------------------------------------------------------------------------
-count: process (clk, input, pre_count)
+conditions: process (clk, input, pre_count, PLL_CLK_t, presignal_time_clear_flag, postsignal_time_clear_flag)
 begin
-
--- if input = '1' and pre_count < x"3" and presignal_time_clear_flag = '0' then
---   pre_count <= (others=>'0');
--- elsif input = '1' and pre_count < x"3" and presignal_time_clear_flag = '1' then
---     presignal_time_clear_flag <= '0';
---       pre_count <= (others=>'0');
-    -- if pre_count = x"3" and presignal_time_clear_flag = '0' then
-    --   presignal_time_clear_flag <= '1';
-        -- elsif  pre_count = x"3" and presignal_time_clear_flag = '1' then
-        --   postsignal_time_clear_flag <= '1';
-          if rising_edge(clk) and pre_count < x"3" then
-            pre_count <= pre_count + "1";
+      if rising_edge(clk) and  pre_count_clr_flag_out  = '1' then
+        out_flag  <= '0';
+        presignal_time_clear_flag <= '0';
+        postsignal_time_clear_flag <= '0';
+      end if;
+       if pre_count = x"5" and presignal_time_clear_flag = '0' then
+         presignal_time_clear_flag <= '1';
+       elsif  pre_count = x"A" and presignal_time_clear_flag = '1' and postsignal_time_clear_flag = '0' then
+        postsignal_time_clear_flag <= '1';
+          out_flag  <= '1';
 end if;
-  -- if pre_count = x"3" and presignal_time_clear_flag = '0' then
-  --           presignal_time_clear_flag <= '1';
-  --           elsif  pre_count = x"3" and presignal_time_clear_flag = '1' then
-  --             postsignal_time_clear_flag <= '1';
-  --               elsif input = '1' then
-  --                 pre_count <= (others=>'0');
-  --
-  --                 elsif rising_edge(clk) and pre_count < x"3" then
-  --                     pre_count <= pre_count + "1";
-  --         end if;
+end process conditions;
 
+counter: process (clk, out_flag, input, pre_count)
+begin
+  if ( out_flag  = '0' and input = '1' ) or  (pre_count_clr_flag_out = '1') then
+    pre_count <= (others=>'0');
+  elsif rising_edge(clk) and out_flag  = '0' and input = '0' then
+      pre_count <= pre_count + "1";
+  end if;
+end process counter;
 
-end process count;
+output_on: process (out_flag, clk)
+begin
+  if rising_edge(clk)  then
+if out_flag  = '1' then
 
+  output2  <= '1';
+  pre_count_clr_flag_out <= '1';
+
+else
+    output2  <= '0';
+    pre_count_clr_flag_out <= '0';
+   end if;
+   end if;
+end process output_on;
 
 ----------------------------FSM realisation
 -- Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count, presignal_time_clear_flag, PLL_CLK_t  )
