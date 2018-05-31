@@ -44,6 +44,7 @@ entity proj_4 is
          );
 end proj_4;
 
+
 architecture Behavioral of proj_4 is
 signal counter1, counter2                          :  std_logic_vector(7 downto 0) := (others=>'0');
 signal clear_time_limit_pre                        :  integer :=20;
