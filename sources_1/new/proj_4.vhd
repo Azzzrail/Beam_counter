@@ -33,28 +33,32 @@ use IEEE.NUMERIC_STD.ALL;
 
 entity proj_4 is
     Port ( clk       : in STD_LOGIC;
-    		   reset     : in STD_LOGIC;
 		       enable    : in STD_LOGIC;
-		       input     : in STD_LOGIC;
-           output1   : inout STD_LOGIC;
+		       Beam_input     : in STD_LOGIC;
+           output1   : out STD_LOGIC;
+           output1_gnd   : out STD_LOGIC;
            output2   : out STD_LOGIC;
            output3   : out STD_LOGIC;
-           output4   : out STD_LOGIC);
+           output3_gnd   : out STD_LOGIC
+
+         );
 end proj_4;
 
 architecture Behavioral of proj_4 is
-signal pre_count                                   :  std_logic_vector(7 downto 0);
-signal out_signal_width_count                      :  std_logic_vector(2 downto 0);
-signal presignal_time_clear_flag                   :  STD_LOGIC;
-signal postsignal_time_clear_flag                  :  STD_LOGIC;
-signal signal_width                                :  std_logic_vector(8 downto 0);
-signal out_flag,PLL_CLK_t                          :  STD_LOGIC;
-signal one_second_precounter                       :  std_logic_vector(22 downto 0);
-signal pre_counter                                 :  std_logic_vector(22 downto 0);
-signal PLL_CLK_in, pre_count_flag                  :  STD_LOGIC;
-signal output_allowed_flag,count_allowed_flag      :  STD_LOGIC := '0';
-type state_values is (reset_FSM, reset_counter, counter, flag, out_signal_on, out_signal_off);
-signal pres_state, next_state : state_values;
+signal counter1, counter2                          :  std_logic_vector(7 downto 0) := (others=>'0');
+signal clear_time_limit_pre                        :  integer :=20;
+signal clear_time_limit_post                       :  integer :=20;
+signal out_pulse_width_limit                       :  integer :=5;
+signal out_pulse_width                             :  std_logic_vector(2 downto 0) := (others=>'0');
+signal counter1_flag, counter2_flag                :  STD_LOGIC := '0';
+signal second_counter_allowed                      :  STD_LOGIC := '0';
+signal out_flag,PLL_CLK_t                          :  STD_LOGIC := '0';
+signal clkin                                       :  STD_LOGIC;
+
+type state_values1 is (count1, reset_counter1, waiter, run_count2);
+signal pres_state1, next_state1 : state_values1;
+type state_values2 is (wait_in_allowed, count2, out_allowed, reset_counter2);
+signal pres_state2, next_state2 : state_values2;
 
 
 component clkip
@@ -65,66 +69,147 @@ component clkip
    clk_in1          : in     std_logic
   );
  end component;
+ attribute DONT_TOUCH : string;
+ attribute DONT_TOUCH of pres_state1, next_state1, pres_state2, next_state2: signal is "TRUE";
 
 begin
+output1_gnd <= '0';
+output3_gnd <= '0';
+output3 <= second_counter_allowed;
+clkin <= clk;
+output2 <= out_flag;
+output1 <= out_flag;
 IP_clock : clkip
   port map (
  -- Clock out ports
   clk_out1 => PLL_CLK_t,
   -- Clock in ports
-  clk_in1 => clk
+  clk_in1 =>  clkin
 );
 
 
-Noise_reduction: process( pres_state, next_state, clk, input, output1, pre_count, presignal_time_clear_flag, PLL_CLK_t  )
+--
+-- SYNC_PROC: process (PLL_CLK_t)
+--    begin
+--       if (rising_edge(PLL_CLK_t)) then
+--          if (enable = '0') then
+--             pres_state1 <= reset_counter1;
+--             output2 <= '0';
+--             output1 <= '0';
+--          else
+--             pres_state1 <= next_state1;
+--             pres_state2 <= next_state2;
+--             output2 <= out_flag;
+--             output1 <= out_flag;
+--          -- assign other outputs to internal signals
+--          end if;
+--       end if;
+--    end process;
 
-    begin
-      case pres_state is
-        when reset_FSM =>
-          if  rising_edge(clk)  then
-            presignal_time_clear_flag <= '0';
-            output4  <= '0';
-          end if;
-          next_state <= reset_counter;
-        when reset_counter =>
-          if  rising_edge(clk)  then
-            output3  <= '0';
-            pre_count  <= (others=>'0');
-          end if;
-          next_state <= counter;
-        when counter =>
-          if pre_count = x"3" and presignal_time_clear_flag = '0' then
-            next_state <= flag;
-            elsif  pre_count = x"3" and presignal_time_clear_flag = '1' then
-              next_state <= out_signal_on;
-                elsif input = '1' then
-                  next_state <= reset_counter;
-                  elsif rising_edge(clk) and pre_count < x"3" then
-                      pre_count <= pre_count + "1";
-          end if;
-        when flag =>
-          output3  <= '1';
-          presignal_time_clear_flag <= '1';
-          if  rising_edge(clk)  then
-            next_state <= reset_counter;
-          end if;
-        when out_signal_on =>
-          output4  <= '1';
-          next_state <= reset_FSM;
-        when out_signal_off =>
-          next_state <= reset_FSM;
-        end case;
+   -- OUTPUT_DECODE: process (clk, out_flag)
+   -- begin
+   --    --insert statements to decode internal output signals
+   --    --below is simple example
+   --    if rising_edge(PLL_CLK_t)  then
+   --
+   --       output2 <= out_flag;
+   --       output1 <= out_flag;
+   --
+   --    end if;
+   -- end process;
 
-end process Noise_reduction;
+      Count1_fsm: process (pres_state1, next_state1, Beam_input, PLL_CLK_t, out_flag)
+      begin
+        if (rising_edge(PLL_CLK_t)) then
+              pres_state1 <= next_state1;
+        end if;
+         case (pres_state1) is
+            when count1 =>
 
+            if   rising_edge(PLL_CLK_t)   then
+                pres_state1 <= next_state1;
+              if counter1 >= clear_time_limit_pre and counter1_flag = '0' then
+                 --counter1 <= (others=>'0');
+                 counter1_flag <= '1';
+                 next_state1 <= waiter;
+                   elsif ( counter1_flag = '0' and Beam_input = '1' ) then
+                   next_state1 <= reset_counter1;
+                   else
+                       counter1 <= counter1 +'1';
+              end if;
+            end if;
 
-statereg: process (clk, enable, output1)
-  begin
-    if (enable = '0') then
-      pres_state <= reset_FSM;
-    elsif (clk'event and clk ='1') then
-          pres_state <= next_state;
+            when waiter =>
+            if Beam_input = '1' then --rising_edge(Beam_input) then  counter1_flag <= '1' and
+                next_state1 <= run_count2;
+              end if;
+
+            when run_count2 =>
+                second_counter_allowed <= '1';
+
+                next_state1 <=  reset_counter1;
+
+            when reset_counter1 =>
+                 counter1 <= (others=>'0');
+                 counter1_flag <= '0';
+                 second_counter_allowed <= '0';
+                 next_state1 <= count1;
+
+            when others =>
+               next_state1 <= reset_counter1;
+         end case;
+      end process;
+---------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------
+
+   Count2_fsm: process (pres_state2, next_state2, second_counter_allowed, Beam_input, PLL_CLK_t)
+   begin
+     if (rising_edge(PLL_CLK_t)) then
+       pres_state2 <= next_state2;
      end if;
-end process statereg;
+
+      case (pres_state2) is
+
+        when wait_in_allowed =>
+        if  rising_edge(PLL_CLK_t) then
+            if second_counter_allowed = '1' then
+              next_state2 <= count2;
+          end if;
+              end if;
+
+         when count2 =>
+         if  rising_edge(PLL_CLK_t) then
+           if counter2 >= clear_time_limit_post then
+             counter2_flag <= '1';
+             next_state2 <= out_allowed;
+            elsif  counter2_flag = '0' and Beam_input = '1' then
+                  next_state2 <= wait_in_allowed;
+                else
+                    counter2 <= counter2 +'1';
+            end if;
+         end if;
+
+         when out_allowed =>
+          if  rising_edge(PLL_CLK_t) then
+            if (out_pulse_width > out_pulse_width_limit) then
+              next_state2 <= reset_counter2;
+              out_pulse_width <= (others=>'0');
+            else
+              out_pulse_width <= out_pulse_width + '1';
+              counter2 <= (others=>'0');
+              out_flag <= '1';
+            end if;
+          end if;
+         when reset_counter2 =>
+             counter2_flag <= '0';
+             out_flag <= '0';
+            next_state2 <= wait_in_allowed;
+
+
+
+         when others =>
+            next_state2 <= reset_counter2;
+      end case;
+   end process;
 
 end Behavioral;
